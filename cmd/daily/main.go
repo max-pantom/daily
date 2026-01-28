@@ -33,6 +33,7 @@ func main() {
 	if err != nil {
 		exitErr(err)
 	}
+	st.Normalize(now)
 
 	switch cmd {
 	case "start":
@@ -283,6 +284,8 @@ func runWatch(args []string) error {
 			fmt.Println("watch: load error", err)
 			continue
 		}
+		now := time.Now()
+		st.Normalize(now)
 		if st.ActiveSession == nil {
 			continue
 		}
@@ -292,7 +295,6 @@ func runWatch(args []string) error {
 			return err
 		}
 		if idleDurNow >= idleDur {
-			now := time.Now()
 			if _, err := st.StopSession(now); err != nil {
 				fmt.Println("watch: stop error", err)
 				continue

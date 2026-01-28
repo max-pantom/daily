@@ -61,6 +61,7 @@ func statusTitle(path string) string {
 	if err != nil {
 		return "Daily"
 	}
+	st.Normalize(time.Now())
 	now := time.Now()
 	work, active := st.TodaySummary(now)
 	label := fmt.Sprintf("Daily %s", state.HumanMinutes(work))

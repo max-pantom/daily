@@ -77,33 +77,33 @@ const statusBarHeight = 2
 // milestoneThemes defines color themes by work-time thresholds (minutes).
 // Customize the colors here to update the TUI look at each milestone.
 var milestoneThemes = []milestoneTheme{
-	{ // 4h
-		Name:         "focus-green",
+	{ // 4h blueish
+		Name:         "deep-blue",
 		ThresholdMin: 240,
-		Accent:       lipgloss.Color("#8aa788"),
-		Muted:        lipgloss.Color("#6f7a70"),
-		SelectedBg:   lipgloss.Color("#2b312a"),
+		Accent:       lipgloss.Color("#7fb3ff"),
+		Muted:        lipgloss.Color("#5c6b80"),
+		SelectedBg:   lipgloss.Color("#1f2b3a"),
 	},
-	{ // 6h
-		Name:         "steady-olive",
+	{ // 6h blackish
+		Name:         "night-mode",
 		ThresholdMin: 360,
-		Accent:       lipgloss.Color("#97b38a"),
-		Muted:        lipgloss.Color("#73806f"),
-		SelectedBg:   lipgloss.Color("#31382c"),
+		Accent:       lipgloss.Color("#dfe5dd"),
+		Muted:        lipgloss.Color("#4a4f4a"),
+		SelectedBg:   lipgloss.Color("#151515"),
 	},
-	{ // 8h
+	{ // 8h amber
 		Name:         "deep-amber",
 		ThresholdMin: 480,
 		Accent:       lipgloss.Color("#FFA132"),
 		Muted:        lipgloss.Color("#6f7a70"),
 		SelectedBg:   lipgloss.Color("#3a2b1f"),
 	},
-	{ // 10h+
-		Name:         "late-night",
+	{ // 10h red
+		Name:         "alert-red",
 		ThresholdMin: 600,
-		Accent:       lipgloss.Color("#E2942D"),
+		Accent:       lipgloss.Color("#ff4d4d"),
 		Muted:        lipgloss.Color("#6f7a70"),
-		SelectedBg:   lipgloss.Color("#2c2620"),
+		SelectedBg:   lipgloss.Color("#3a1f1f"),
 	},
 }
 
@@ -223,6 +223,7 @@ func (m *model) reload(now time.Time) {
 		m.err = err
 		return
 	}
+	st.Normalize(now)
 	work, active := st.TodaySummary(now)
 	m.dayKey = now.Format("2006-01-02")
 	if m.dayKey != m.lastDay {

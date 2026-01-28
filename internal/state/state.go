@@ -205,10 +205,77 @@ func defaults() *State {
 	}
 }
 
+// Normalize ensures active session/break don’t span days; it splits at midnight.
+func (s *State) Normalize(now time.Time) {
+	// Normalize active work session across day boundary.
+	if s.ActiveSession != nil && !sameDate(s.ActiveSession.Start, now) {
+		mid := midnight(now)
+		if mid.After(s.ActiveSession.Start) {
+			dur := mid.Sub(s.ActiveSession.Start)
+			if dur > 0 {
+				s.addWorkSpan(s.ActiveSession.Start, mid, s.ActiveSession.Tags, s.ActiveSession.Note)
+			}
+			s.ActiveSession.Start = mid
+		}
+	}
+
+	// Normalize active break across day boundary.
+	if s.ActiveBreak != nil && !sameDate(s.ActiveBreak.Start, now) {
+		mid := midnight(now)
+		if mid.After(s.ActiveBreak.Start) {
+			dur := mid.Sub(s.ActiveBreak.Start)
+			if dur > 0 {
+				s.addBreakSpan(s.ActiveBreak.Start, mid)
+			}
+			s.ActiveBreak.Start = mid
+		}
+	}
+}
+
+func (s *State) addWorkSpan(start, end time.Time, tags []string, note string) {
+	seconds := int(end.Sub(start).Seconds())
+	if seconds <= 0 {
+		return
+	}
+	dayKey := dateKey(start)
+	log := s.dayLog(dayKey)
+	if log.TotalWorkSeconds == 0 && log.TotalWorkMinutes > 0 {
+		log.TotalWorkSeconds = log.TotalWorkMinutes * 60
+	}
+	log.Sessions = append(log.Sessions, Session{Start: start, End: &end, Tags: tags, Note: note})
+	log.TotalWorkSeconds += seconds
+	log.TotalWorkMinutes = log.TotalWorkSeconds / 60
+	log.GoalMinutes = s.GoalMinutes
+	s.Days[dayKey] = log
+}
+
+func (s *State) addBreakSpan(start, end time.Time) {
+	minutes := int(end.Sub(start).Minutes())
+	if minutes <= 0 {
+		return
+	}
+	dayKey := dateKey(start)
+	log := s.dayLog(dayKey)
+	log.TotalBreakMinutes += minutes
+	log.BreakCount++
+	s.Days[dayKey] = log
+}
+
 // dateKey returns the local date in YYYY-MM-DD.
 func dateKey(t time.Time) string {
 	y, m, d := t.Date()
 	return fmt.Sprintf("%04d-%02d-%02d", y, int(m), d)
+}
+
+func sameDate(a, b time.Time) bool {
+	y1, m1, d1 := a.Date()
+	y2, m2, d2 := b.Date()
+	return y1 == y2 && m1 == m2 && d1 == d2
+}
+
+func midnight(t time.Time) time.Time {
+	y, m, d := t.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
 }
 
 // ParseGoalMinutes interprets an input value as either hours (< 24) or minutes.
