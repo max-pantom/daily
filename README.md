@@ -9,6 +9,11 @@ Lightweight CLI + tray to track long workdays. Commands:
 - `daily ui` (TUI) / `daily tray` (detached menu) / `daily install`
 - `daily update` (pull latest from GitHub)
 
+Updating:
+
+- `daily update` runs `go install github.com/max-pantom/daily/cmd/daily@latest` and installs to `/usr/local/bin/daily`.
+- To cut a release, tag the repo (e.g. `git tag v0.1.0 && git push origin v0.1.0`). `daily update --version v0.1.0` (coming soon) or `GOFLAGS=-ldflags=... go install github.com/max-pantom/daily/cmd/daily@v0.1.0` will fetch that tag.
+
 Install/update from source:
 
 ```bash
