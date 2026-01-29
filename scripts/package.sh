@@ -36,7 +36,11 @@ for target in "${targets[@]}"; do
   echo "Building $os/$arch..."
   BIN="daily"
   TAR="daily_${VERSION}_${os}_${arch}.tar.gz"
-  GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o "$OUT/$BIN" ./cmd/daily
+  CGO=0
+  if [[ "$os" == "darwin" ]]; then
+    CGO=1
+  fi
+  GOOS=$os GOARCH=$arch CGO_ENABLED=$CGO go build -o "$OUT/$BIN" ./cmd/daily
   tar -C "$OUT" -czf "$OUT/$TAR" "$BIN"
   rm -f "$OUT/$BIN"
 done
