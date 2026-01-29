@@ -7,7 +7,7 @@ Lightweight CLI + tray to track long workdays. Commands:
 - `daily sprint --work 50 --break 10 --cycles 4 [--tag ... --note ...]`
 - `daily watch --idle 10 --interval 30s` (autopause on idle, macOS/Linux)
 - `daily ui` (TUI) / `daily tray` (detached menu) / `daily install`
-- `daily update` (pull latest from GitHub)
+- `daily update` (pull latest from GitHub; `--version v0.1.3` to pin)
 
 Updating:
 
@@ -18,6 +18,8 @@ Install/update from source:
 
 ```bash
 go run ./cmd/daily install    # or: go run ./cmd/daily update
+# or direct from GitHub (no repo checkout needed):
+go install github.com/max-pantom/daily/cmd/daily@latest
 ```
 
 Quick use:

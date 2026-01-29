@@ -139,7 +139,7 @@ func main() {
 		}
 
 	case "update":
-		if err := runUpdate(); err != nil {
+		if err := runUpdate(args); err != nil {
 			exitErr(err)
 		}
 
@@ -167,7 +167,7 @@ func usage() {
 	fmt.Println("  daily ui              Open live terminal dashboard")
 	fmt.Println("  daily tray            Launch macOS/Linux tray menu")
 	fmt.Println("  daily install         Copy binary to /usr/local/bin/daily")
-	fmt.Println("  daily update          Fetch latest from GitHub and install")
+	fmt.Println("  daily update [--version vX] Fetch/install from GitHub (default latest)")
 }
 
 func runUI() {
@@ -425,7 +425,12 @@ func copySelf(dest string) error {
 	return nil
 }
 
-func runUpdate() error {
+func runUpdate(args []string) error {
+	fs := flag.NewFlagSet("update", flag.ExitOnError)
+	fs.SetOutput(os.Stdout)
+	version := fs.String("version", "latest", "version or tag to install (e.g. v0.1.3 or latest)")
+	fs.Parse(args)
+
 	binDir := os.Getenv("GOBIN")
 	if binDir == "" {
 		gopath := os.Getenv("GOPATH")
@@ -436,7 +441,7 @@ func runUpdate() error {
 		binDir = filepath.Join(gopath, "bin")
 	}
 	// go install latest from GitHub
-	cmd := exec.Command("go", "install", "github.com/max-pantom/daily/cmd/daily@latest")
+	cmd := exec.Command("go", "install", "github.com/max-pantom/daily/cmd/daily@"+*version)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
