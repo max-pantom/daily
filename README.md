@@ -30,6 +30,12 @@ curl -fsSL https://raw.githubusercontent.com/max-pantom/daily/main/install.sh | 
 VERSION=v0.1.3 curl -fsSL https://raw.githubusercontent.com/max-pantom/daily/main/install.sh | bash
 ```
 
+Release artifacts (for maintainers):
+
+- Tag the repo: `git tag v0.1.3 && git push origin v0.1.3`
+- Build tarballs/checksums: `VERSION=v0.1.3 scripts/package.sh` (outputs in `dist/` as `daily_<version>_<os>_<arch>.tar.gz` + `checksums.txt`).
+- Upload artifacts to the GitHub Release matching the tag. The `daily update` binary fallback and `install.sh` expect this naming.
+
 Quick use:
 
 ```bash
