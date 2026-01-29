@@ -14,8 +14,9 @@ func Run(statePath string) error {
 	done := make(chan struct{})
 
 	systray.Run(func() {
-		systray.SetTitle("Daily")
-		systray.SetTooltip("Daily Work Tracker")
+		title, tip := statusInfo(statePath)
+		systray.SetTitle(title)
+		systray.SetTooltip(tip)
 
 		mStart := systray.AddMenuItem("Start", "Start tracking")
 		mStop := systray.AddMenuItem("Stop", "Stop tracking")
@@ -30,18 +31,27 @@ func Run(statePath string) error {
 			for {
 				select {
 				case <-ticker.C:
-					systray.SetTitle(statusTitle(statePath))
+					title, tip := statusInfo(statePath)
+					systray.SetTitle(title)
+					systray.SetTooltip(tip)
 				case <-mStart.ClickedCh:
 					_ = start(statePath)
-					systray.SetTitle(statusTitle(statePath))
+					title, tip := statusInfo(statePath)
+					systray.SetTitle(title)
+					systray.SetTooltip(tip)
 				case <-mStop.ClickedCh:
 					_ = stop(statePath)
-					systray.SetTitle(statusTitle(statePath))
+					title, tip := statusInfo(statePath)
+					systray.SetTitle(title)
+					systray.SetTooltip(tip)
 				case <-mBreak.ClickedCh:
 					_ = toggleBreak(statePath)
-					systray.SetTitle(statusTitle(statePath))
+					title, tip := statusInfo(statePath)
+					systray.SetTitle(title)
+					systray.SetTooltip(tip)
 				case <-mStatus.ClickedCh:
-					systray.SetTooltip(statusTitle(statePath))
+					_, tip := statusInfo(statePath)
+					systray.SetTooltip(tip)
 				case <-mQuit.ClickedCh:
 					systray.Quit()
 					return
@@ -56,23 +66,83 @@ func Run(statePath string) error {
 	return nil
 }
 
-func statusTitle(path string) string {
+func statusInfo(path string) (string, string) {
 	st, err := state.Load(path)
 	if err != nil {
-		return "Daily"
+		return "Daily", "Daily Work Tracker"
 	}
-	st.Normalize(time.Now())
 	now := time.Now()
+	st.Normalize(now)
 	work, active := st.TodaySummary(now)
-	label := fmt.Sprintf("Daily %s", state.HumanMinutes(work))
+
+	goal := st.GoalMinutes
+	percent := 0
+	if goal > 0 {
+		percent = (work * 100) / goal
+	}
+
+	statusGlyph := progressGlyph(percent)
+	if st.ActiveBreak != nil {
+		statusGlyph = "☕"
+	}
+
+	title := fmt.Sprintf("%s %s", statusGlyph, state.HumanMinutes(work))
 	if st.ActiveSession != nil {
-		label += fmt.Sprintf(" (+%s)", state.HumanMinutes(active))
+		title += fmt.Sprintf(" (+%s)", state.HumanMinutes(active))
 	}
 	if st.ActiveBreak != nil {
 		mins := int(now.Sub(st.ActiveBreak.Start).Minutes())
-		label += fmt.Sprintf(" [break %s]", state.HumanMinutes(mins))
+		title += fmt.Sprintf(" [break %s]", state.HumanMinutes(mins))
 	}
-	return label
+
+	nextLabel, nextETA := nextMilestone(work, goal)
+	goalStr := state.HumanMinutes(goal)
+	tip := fmt.Sprintf("Work: %s | Goal: %s | %d%%", state.HumanMinutes(work), goalStr, percent)
+	if nextLabel != "" && nextETA != "" {
+		tip += fmt.Sprintf(" | Next: %s in %s", nextLabel, nextETA)
+	}
+	if st.ActiveBreak != nil {
+		mins := int(now.Sub(st.ActiveBreak.Start).Minutes())
+		tip += fmt.Sprintf(" | Break: %s", state.HumanMinutes(mins))
+	}
+	return title, tip
+}
+
+func progressGlyph(percent int) string {
+	switch {
+	case percent >= 100:
+		return "●"
+	case percent >= 80:
+		return "◕"
+	case percent >= 60:
+		return "◑"
+	case percent >= 40:
+		return "◔"
+	case percent >= 20:
+		return "○"
+	default:
+		return "◌"
+	}
+}
+
+var milestoneThresholds = []int{240, 360, 480, 600}
+
+func nextMilestone(workMin, goalMin int) (string, string) {
+	best := -1
+	for _, th := range milestoneThresholds {
+		if th > workMin {
+			best = th
+			break
+		}
+	}
+	if best == -1 || (goalMin > 0 && goalMin < best) {
+		best = goalMin
+	}
+	if best <= 0 || best <= workMin {
+		return "", ""
+	}
+	etaMin := best - workMin
+	return state.HumanMinutes(best), state.HumanMinutes(etaMin)
 }
 
 func start(path string) error {

@@ -2,7 +2,7 @@
 
 Lightweight CLI + tray to track long workdays. Commands:
 
-- `daily start [--tag t --note msg]` / `daily stop`
+- `daily start [--tag t --note msg]` / `daily stop` (tags are free text, repeat `--tag` to add more; `--note` is a short description)
 - `daily status` / `daily today` / `daily history [days]`
 - `daily sprint --work 50 --break 10 --cycles 4 [--tag ... --note ...]`
 - `daily watch --idle 10 --interval 30s` (autopause on idle, macOS/Linux)
@@ -26,6 +26,7 @@ Quick use:
 daily start --tag focus --note "chapter 3"
 daily stop
 daily tray     # stays after terminal closes
+daily update   # pull latest
 ```
 
 Notes: idle watch needs `ioreg` (mac) or `xprintidle` (Linux); notifications use `osascript`/`notify-send` if available.
