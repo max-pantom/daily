@@ -14,6 +14,7 @@ func Run(statePath string) error {
 	done := make(chan struct{})
 
 	systray.Run(func() {
+		st, _ := state.Load(statePath)
 		title, tip := statusInfo(statePath)
 		systray.SetTitle(title)
 		systray.SetTooltip(tip)
@@ -22,6 +23,8 @@ func Run(statePath string) error {
 		mStop := systray.AddMenuItem("Stop", "Stop tracking")
 		mBreak := systray.AddMenuItem("Break", "Start/stop break")
 		mStatus := systray.AddMenuItem("Status", "Show current status")
+		nNotify := "Notifications"
+		mNotify := systray.AddMenuItemCheckbox(nNotify, "Toggle notifications", st != nil && st.NotificationsOn())
 		systray.AddSeparator()
 		mQuit := systray.AddMenuItem("Quit", "Quit Daily tray")
 
@@ -46,6 +49,15 @@ func Run(statePath string) error {
 					systray.SetTooltip(tip)
 				case <-mBreak.ClickedCh:
 					_ = toggleBreak(statePath)
+					title, tip := statusInfo(statePath)
+					systray.SetTitle(title)
+					systray.SetTooltip(tip)
+				case <-mNotify.ClickedCh:
+					on := toggleNotify(statePath)
+					mNotify.Check()
+					if !on {
+						mNotify.Uncheck()
+					}
 					title, tip := statusInfo(statePath)
 					systray.SetTitle(title)
 					systray.SetTooltip(tip)
@@ -105,6 +117,9 @@ func statusInfo(path string) (string, string) {
 		mins := int(now.Sub(st.ActiveBreak.Start).Minutes())
 		tip += fmt.Sprintf(" | Break: %s", state.HumanMinutes(mins))
 	}
+	if !st.NotificationsOn() {
+		tip += " | Notifications: off"
+	}
 	return title, tip
 }
 
@@ -143,6 +158,21 @@ func nextMilestone(workMin, goalMin int) (string, string) {
 	}
 	etaMin := best - workMin
 	return state.HumanMinutes(best), state.HumanMinutes(etaMin)
+}
+
+func toggleNotify(path string) bool {
+	st, err := state.Load(path)
+	if err != nil {
+		return false
+	}
+	on := !st.NotificationsOn()
+	st.NotificationsEnabled = newBool(on)
+	_ = st.Save(path)
+	return on
+}
+
+func newBool(v bool) *bool {
+	return &v
 }
 
 func start(path string) error {

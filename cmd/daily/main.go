@@ -234,7 +234,9 @@ func runSprint(args []string) error {
 		}
 		_ = st.Save(statePath())
 		fmt.Printf("Cycle %d/%d: work %d min\n", i, *cycles, *work)
-		notify.Send("Daily Sprint", fmt.Sprintf("Cycle %d work started", i))
+		if shouldNotify(st) {
+			notify.Send("Daily Sprint", fmt.Sprintf("Cycle %d work started", i))
+		}
 		time.Sleep(time.Duration(*work) * time.Minute)
 
 		st, _ = state.Load(statePath())
@@ -244,7 +246,9 @@ func runSprint(args []string) error {
 			}
 			_ = st.Save(statePath())
 		}
-		notify.Send("Daily Sprint", fmt.Sprintf("Cycle %d break", i))
+		if shouldNotify(st) {
+			notify.Send("Daily Sprint", fmt.Sprintf("Cycle %d break", i))
+		}
 
 		// Break
 		st, _ = state.Load(statePath())
@@ -262,7 +266,11 @@ func runSprint(args []string) error {
 		}
 	}
 
-	notify.Send("Daily Sprint", "Sprint finished")
+	if st, err := state.Load(statePath()); err == nil {
+		if shouldNotify(st) {
+			notify.Send("Daily Sprint", "Sprint finished")
+		}
+	}
 	fmt.Println("Sprint finished")
 	return nil
 }
@@ -301,10 +309,19 @@ func runWatch(args []string) error {
 				continue
 			}
 			_ = st.Save(statePath())
-			notify.Send("Daily", fmt.Sprintf("Auto-paused after %s idle", idleDur))
+			if shouldNotify(st) {
+				notify.Send("Daily", fmt.Sprintf("Auto-paused after %s idle", idleDur))
+			}
 			fmt.Printf("Auto-paused session after idle %s\n", idleDur)
 		}
 	}
+}
+
+func shouldNotify(st *state.State) bool {
+	if os.Getenv("DAILY_QUIET") == "1" {
+		return false
+	}
+	return st.NotificationsOn()
 }
 
 func showToday(st *state.State, now time.Time) {

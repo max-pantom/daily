@@ -18,6 +18,7 @@ type State struct {
 	BreakIntervalMinutes int                `json:"break_interval_minutes"`
 	ActiveSession        *Session           `json:"active_session,omitempty"`
 	ActiveBreak          *Session           `json:"active_break,omitempty"`
+	NotificationsEnabled *bool              `json:"notifications_enabled,omitempty"`
 	Days                 map[string]*DayLog `json:"days"`
 }
 
@@ -192,6 +193,9 @@ func (s *State) ensureDefaults() {
 	if s.BreakIntervalMinutes == 0 {
 		s.BreakIntervalMinutes = defaultBreakIntervalMinutes
 	}
+	if s.NotificationsEnabled == nil {
+		s.NotificationsEnabled = boolPtr(true)
+	}
 	if s.Days == nil {
 		s.Days = make(map[string]*DayLog)
 	}
@@ -259,6 +263,17 @@ func (s *State) addBreakSpan(start, end time.Time) {
 	log.TotalBreakMinutes += minutes
 	log.BreakCount++
 	s.Days[dayKey] = log
+}
+
+func (s *State) NotificationsOn() bool {
+	if s.NotificationsEnabled == nil {
+		return true
+	}
+	return *s.NotificationsEnabled
+}
+
+func boolPtr(v bool) *bool {
+	return &v
 }
 
 // dateKey returns the local date in YYYY-MM-DD.
