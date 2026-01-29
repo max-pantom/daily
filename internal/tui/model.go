@@ -77,6 +77,13 @@ const statusBarHeight = 2
 // milestoneThemes defines color themes by work-time thresholds (minutes).
 // Customize the colors here to update the TUI look at each milestone.
 var milestoneThemes = []milestoneTheme{
+	{ // baseline
+		Name:         "base",
+		ThresholdMin: 0,
+		Accent:       lipgloss.Color("#8aa788"),
+		Muted:        lipgloss.Color("#6f7a70"),
+		SelectedBg:   lipgloss.Color("#2b312a"),
+	},
 	{ // 4h blueish
 		Name:         "deep-blue",
 		ThresholdMin: 240,
@@ -473,18 +480,23 @@ func (m model) renderWeek() string {
 	lines := make([]string, 0, len(keys))
 	for _, k := range keys {
 		log := st.Days[k]
+		th := themeForMinutes(log.TotalWorkMinutes)
+		dateStyle := weekDateStyle.Foreground(th.Accent)
+		barStyle := weekBarStyle.Foreground(th.Accent)
+		valueStyle := weekValueStyle.Foreground(th.Muted)
+
 		barLen := int(float64(log.TotalWorkMinutes) / float64(maxWork) * float64(barWidth))
 		if barLen < 1 && log.TotalWorkMinutes > 0 {
 			barLen = 1
 		}
-		bar := weekBarStyle.Render(strings.Repeat("█", barLen))
-		info := weekValueStyle.Render(fmt.Sprintf("%s  %d breaks  %s brk",
+		bar := barStyle.Render(strings.Repeat("█", barLen))
+		info := valueStyle.Render(fmt.Sprintf("%s  %d breaks  %s brk",
 			state.HumanMinutes(log.TotalWorkMinutes),
 			log.BreakCount,
 			state.HumanMinutes(log.TotalBreakMinutes),
 		))
 		line := lipgloss.JoinHorizontal(lipgloss.Left,
-			weekDateStyle.Render(k),
+			dateStyle.Render(k),
 			bar,
 			info,
 		)
