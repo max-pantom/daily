@@ -30,6 +30,8 @@ curl -fsSL https://raw.githubusercontent.com/max-pantom/daily/main/install.sh | 
 VERSION=v0.1.3 curl -fsSL https://raw.githubusercontent.com/max-pantom/daily/main/install.sh | bash
 ```
 
+If the release binary is missing for your platform, the installer falls back to `go install` (requires Go). To build binaries yourself: `VERSION=v0.1.4.1 scripts/package.sh` (run on each target OS/arch or set TARGETS if your toolchain supports cross-build).
+
 Release artifacts (for maintainers):
 
 - Tag the repo: `git tag v0.1.3 && git push origin v0.1.3`
