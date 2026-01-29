@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"daily/internal/idle"
-	"daily/internal/notify"
-	"daily/internal/state"
-	"daily/internal/tray"
-	"daily/internal/tui"
+	"github.com/max-pantom/daily/internal/idle"
+	"github.com/max-pantom/daily/internal/notify"
+	"github.com/max-pantom/daily/internal/state"
+	"github.com/max-pantom/daily/internal/tray"
+	"github.com/max-pantom/daily/internal/tui"
 )
 
 func main() {

@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"daily/internal/state"
+	"github.com/max-pantom/daily/internal/state"
 )
 
 type model struct {

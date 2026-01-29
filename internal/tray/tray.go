@@ -6,7 +6,7 @@ import (
 
 	"github.com/getlantern/systray"
 
-	"daily/internal/state"
+	"github.com/max-pantom/daily/internal/state"
 )
 
 // Run starts a macOS/Linux system tray with quick actions.
