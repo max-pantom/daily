@@ -21,7 +21,7 @@ latest_tag() {
 }
 
 main() {
-  os arch=$(detect)
+  read -r os arch <<<"$(detect)"
   if [[ "$VERSION" == "latest" ]]; then
     VERSION=$(latest_tag)
   fi
