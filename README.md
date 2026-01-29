@@ -22,6 +22,14 @@ go run ./cmd/daily install    # or: go run ./cmd/daily update
 go install github.com/max-pantom/daily/cmd/daily@latest
 ```
 
+No-Go install (prebuilt binary):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/max-pantom/daily/main/install.sh | bash
+# or pin a version:
+VERSION=v0.1.3 curl -fsSL https://raw.githubusercontent.com/max-pantom/daily/main/install.sh | bash
+```
+
 Quick use:
 
 ```bash

@@ -17,6 +17,7 @@ import (
 	"github.com/max-pantom/daily/internal/state"
 	"github.com/max-pantom/daily/internal/tray"
 	"github.com/max-pantom/daily/internal/tui"
+	"github.com/max-pantom/daily/internal/update"
 )
 
 func main() {
@@ -441,22 +442,22 @@ func runUpdate(args []string) error {
 		binDir = filepath.Join(gopath, "bin")
 	}
 	// go install latest from GitHub
-	cmd := exec.Command("go", "install", "github.com/max-pantom/daily/cmd/daily@"+*version)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return err
+	// Prefer go install when Go is available; fallback to binary download if go fails.
+	if err := update.GoInstall(*version, os.Stdout, os.Stderr); err == nil {
+		src := filepath.Join(binDir, "daily")
+		if _, err := os.Stat(src); err != nil {
+			return fmt.Errorf("did not find built binary at %s", src)
+		}
+		if err := copyFile(src, installPath()); err != nil {
+			return err
+		}
+		fmt.Printf("updated daily from GitHub to %s\n", installPath())
+		return nil
 	}
 
-	src := filepath.Join(binDir, "daily")
-	if _, err := os.Stat(src); err != nil {
-		return fmt.Errorf("did not find built binary at %s", src)
-	}
-	if err := copyFile(src, installPath()); err != nil {
-		return err
-	}
-	fmt.Printf("updated daily from GitHub to %s\n", installPath())
-	return nil
+	// Fallback: download release binary.
+	fmt.Println("go install failed or unavailable; downloading release binary...")
+	return update.BinaryInstall(*version, installPath(), os.Stdout, os.Stderr)
 }
 
 func copyFile(src, dest string) error {
