@@ -179,10 +179,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.game.reset()
 				return m, nil
 			}
+
 			m.view = "game"
 			m.notice = "Relax mode: Block Breaker"
 			m.game.reset()
 			return m, nil
+
 		case "+":
 			m.notice, m.err = changeGoal(m.statePath, goalStepMinutes)
 			m.reload(time.Now())
