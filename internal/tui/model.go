@@ -33,6 +33,8 @@ type model struct {
 
 	lastMilestone int
 	lastDay       string
+
+	game gameState
 }
 
 type summary struct {
@@ -65,6 +67,7 @@ const (
 	actionStop   = "stop"
 	actionStatus = "status"
 	actionBreak  = "break"
+	actionRelax  = "relax"
 
 	goalStepMinutes  = 30
 	breakStepMinutes = 5
@@ -118,9 +121,10 @@ func newModel(path string) model {
 	m := model{
 		statePath: path,
 		tickRate:  450 * time.Millisecond,
-		actions:   []string{actionStart, actionStop, actionStatus, actionBreak},
+		actions:   []string{actionStart, actionStop, actionStatus, actionBreak, actionRelax},
 		view:      "main",
 	}
+	m.game = newGameState()
 	m.reload(time.Now())
 	return m
 }
@@ -143,14 +147,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "esc":
-			m.view = "main"
+			if m.view == "game" {
+				m.view = "main"
+			} else {
+				m.view = "main"
+			}
+			return m, nil
 		case "up", "k":
 			m.move(-1)
 		case "down", "j":
 			m.move(1)
 		case "enter", " ":
-			m.execute(time.Now())
+			if m.view == "game" {
+				m.game.launch()
+			} else {
+				m.execute(time.Now())
+			}
 			return m, tick(m.tickRate)
+		case "left", "h", "a":
+			if m.view == "game" {
+				m.game.movePaddle(-1)
+				return m, nil
+			}
+		case "right", "l", "d":
+			if m.view == "game" {
+				m.game.movePaddle(1)
+				return m, nil
+			}
+		case "r":
+			if m.view == "game" {
+				m.game.reset()
+				return m, nil
+			}
 		case "+":
 			m.notice, m.err = changeGoal(m.statePath, goalStepMinutes)
 			m.reload(time.Now())
@@ -173,7 +201,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 	case tickMsg:
 		m.spin = (m.spin + 1) % len(spinnerRunFrames)
-		m.reload(time.Time(msg))
+		if m.view == "game" {
+			m.game.tick()
+		} else {
+			m.reload(time.Time(msg))
+		}
 		return m, tick(m.tickRate)
 	}
 	return m, nil
@@ -219,6 +251,10 @@ func (m *model) execute(now time.Time) {
 			m.err = err
 			m.notice = note
 		}
+	case actionRelax:
+		m.view = "game"
+		m.notice = "Relax mode: Block Breaker"
+		m.game.reset()
 	}
 
 	m.reload(now)
@@ -284,6 +320,9 @@ func (m model) View() string {
 
 	if m.view == "week" {
 		return m.renderWeek()
+	}
+	if m.view == "game" {
+		return m.renderGame()
 	}
 
 	th := themeForMinutes(m.summary.workMinutes)
@@ -351,6 +390,27 @@ func (m model) View() string {
 	}
 
 	view := lipgloss.JoinVertical(lipgloss.Left, content, bottom)
+	if m.width > 0 && m.height > 0 {
+		return baseStyle.Width(m.width).Height(m.height).Render(view)
+	}
+	return baseStyle.Render(view)
+}
+
+func (m model) renderGame() string {
+	th := themeForMinutes(m.summary.workMinutes)
+	title := titleStyle.Foreground(th.Accent).Render("BLOCK BREAKER")
+	subtitle := hintStyle.Foreground(th.Muted).Render("←/→ move  SPACE launch  r reset  esc back")
+
+	gameBoard := m.game.render()
+	body := lipgloss.JoinVertical(lipgloss.Center, title, subtitle, gameBoard)
+	if m.width > 0 && m.height > 0 {
+		body = lipgloss.Place(m.width, m.height-statusBarHeight, lipgloss.Center, lipgloss.Center, body)
+	}
+	bottom := m.renderStatusBar()
+	if m.width > 0 {
+		bottom = lipgloss.Place(m.width, statusBarHeight, lipgloss.Center, lipgloss.Center, bottom)
+	}
+	view := lipgloss.JoinVertical(lipgloss.Left, body, bottom)
 	if m.width > 0 && m.height > 0 {
 		return baseStyle.Width(m.width).Height(m.height).Render(view)
 	}
@@ -630,9 +690,226 @@ func actionLabel(action string) string {
 		return "STATUS"
 	case actionBreak:
 		return "BREAK"
+	case actionRelax:
+		return "RELAX"
 	default:
 		return action
 	}
+}
+
+type gameState struct {
+	width        int
+	height       int
+	paddleX      int
+	paddleWidth  int
+	ballX        int
+	ballY        int
+	ballVX       int
+	ballVY       int
+	ballLaunched bool
+	bricks       [][]bool
+	score        int
+	lives        int
+	message      string
+}
+
+func newGameState() gameState {
+	gs := gameState{
+		width:       30,
+		height:      14,
+		paddleWidth: 6,
+		lives:       3,
+	}
+	gs.reset()
+	return gs
+}
+
+func (g *gameState) reset() {
+	g.score = 0
+	g.lives = 3
+	g.message = "Press SPACE to launch"
+	g.initBricks()
+	g.resetBall()
+}
+
+func (g *gameState) initBricks() {
+	rows := 4
+	cols := 10
+	g.bricks = make([][]bool, rows)
+	for r := range g.bricks {
+		g.bricks[r] = make([]bool, cols)
+		for c := range g.bricks[r] {
+			g.bricks[r][c] = true
+		}
+	}
+}
+
+func (g *gameState) resetBall() {
+	g.paddleX = g.width/2 - g.paddleWidth/2
+	g.ballX = g.paddleX + g.paddleWidth/2
+	g.ballY = g.height - 2
+	g.ballVX = 1
+	g.ballVY = -1
+	g.ballLaunched = false
+}
+
+func (g *gameState) launch() {
+	if g.lives == 0 {
+		g.reset()
+		return
+	}
+	if !g.ballLaunched {
+		g.ballLaunched = true
+		g.message = ""
+	}
+}
+
+func (g *gameState) movePaddle(dir int) {
+	if g.lives == 0 {
+		return
+	}
+	g.paddleX += dir * 2
+	if g.paddleX < 1 {
+		g.paddleX = 1
+	}
+	maxX := g.width - g.paddleWidth - 1
+	if g.paddleX > maxX {
+		g.paddleX = maxX
+	}
+	if !g.ballLaunched {
+		g.ballX = g.paddleX + g.paddleWidth/2
+	}
+}
+
+func (g *gameState) tick() {
+	if !g.ballLaunched || g.lives == 0 {
+		return
+	}
+	nextX := g.ballX + g.ballVX
+	nextY := g.ballY + g.ballVY
+
+	if nextX <= 1 || nextX >= g.width-2 {
+		g.ballVX *= -1
+		nextX = g.ballX + g.ballVX
+	}
+	if nextY <= 1 {
+		g.ballVY *= -1
+		nextY = g.ballY + g.ballVY
+	}
+
+	if nextY >= g.height-2 {
+		g.lives--
+		if g.lives == 0 {
+			g.message = "Game over. Press r to reset"
+			return
+		}
+		g.message = "Missed! Press SPACE"
+		g.resetBall()
+		return
+	}
+
+	if nextY == g.height-3 && nextX >= g.paddleX && nextX <= g.paddleX+g.paddleWidth-1 {
+		g.ballVY *= -1
+		nextY = g.ballY + g.ballVY
+	}
+
+	if g.checkBrickCollision(nextX, nextY) {
+		g.ballVY *= -1
+		nextY = g.ballY + g.ballVY
+	}
+
+	g.ballX = nextX
+	g.ballY = nextY
+}
+
+func (g *gameState) checkBrickCollision(x, y int) bool {
+	brickTop := 2
+	brickHeight := 1
+	brickWidth := 3
+	for r, row := range g.bricks {
+		for c, alive := range row {
+			if !alive {
+				continue
+			}
+			bx := 1 + c*brickWidth
+			by := brickTop + r*brickHeight
+			if x >= bx && x < bx+brickWidth && y == by {
+				g.bricks[r][c] = false
+				g.score += 10
+				if g.allBricksCleared() {
+					g.message = "You cleared all bricks! Press r"
+					g.ballLaunched = false
+				}
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (g *gameState) allBricksCleared() bool {
+	for _, row := range g.bricks {
+		for _, alive := range row {
+			if alive {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (g *gameState) render() string {
+	board := make([][]rune, g.height)
+	for y := range board {
+		board[y] = make([]rune, g.width)
+		for x := range board[y] {
+			if y == 0 || y == g.height-1 {
+				board[y][x] = '─'
+			} else if x == 0 || x == g.width-1 {
+				board[y][x] = '│'
+			} else {
+				board[y][x] = ' '
+			}
+		}
+		board[y][0] = '│'
+		board[y][g.width-1] = '│'
+	}
+	board[0][0] = '┌'
+	board[0][g.width-1] = '┐'
+	board[g.height-1][0] = '└'
+	board[g.height-1][g.width-1] = '┘'
+
+	for r, row := range g.bricks {
+		for c, alive := range row {
+			if !alive {
+				continue
+			}
+			x := 1 + c*3
+			y := 2 + r
+			for i := 0; i < 3; i++ {
+				board[y][x+i] = '█'
+			}
+		}
+	}
+
+	for i := 0; i < g.paddleWidth; i++ {
+		board[g.height-2][g.paddleX+i] = '▂'
+	}
+
+	if g.ballLaunched || g.message != "" {
+		board[g.ballY][g.ballX] = '●'
+	}
+
+	lines := make([]string, 0, g.height+2)
+	for _, row := range board {
+		lines = append(lines, string(row))
+	}
+	scoreLine := fmt.Sprintf("Score %d  Lives %d", g.score, g.lives)
+	if g.message != "" {
+		scoreLine = fmt.Sprintf("%s  •  %s", scoreLine, g.message)
+	}
+	lines = append(lines, scoreLine)
+	return strings.Join(lines, "\n")
 }
 
 var (
