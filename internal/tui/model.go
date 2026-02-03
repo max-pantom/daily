@@ -179,6 +179,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.game.reset()
 				return m, nil
 			}
+
+			m.view = "game"
+			m.notice = "Relax mode: Block Breaker"
+			m.game.reset()
+			return m, nil
+
 		case "+":
 			m.notice, m.err = changeGoal(m.statePath, goalStepMinutes)
 			m.reload(time.Now())
@@ -370,7 +376,7 @@ func (m model) View() string {
 		}
 	}
 
-	hints := localHint.Render("+/- goal   [/] break   TAB week   ENTER select   q quit")
+	hints := localHint.Render("+/- goal   [/] break   r relax   TAB week   ENTER select   q quit")
 
 	body := lipgloss.JoinVertical(lipgloss.Center,
 		title,
